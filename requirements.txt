@@ -27,3 +27,11 @@ six>=1.14
 joblib
 memoized-property
 termcolor
+os
+dotenv
+datetime
+
+# Sourcing
+flickrapi
+requests
+urllib
