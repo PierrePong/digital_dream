@@ -11,8 +11,7 @@ scikit-learn
 tensorflow
 tensorboard
 shutil
-cv2
-os
+opencv-python
 
 # tests/linter
 black
