@@ -9,6 +9,9 @@ numpy
 pandas
 scikit-learn
 tensorflow
+tensorboard
+shutil
+opencv-python
 
 # tests/linter
 black
