@@ -10,11 +10,12 @@ import tweepy as tw
 
 
 class Downloader():
-    def __init__(self):
-        pass
+    def __init__(self, limit, hashtag):
+        self.limit = limit # limit is for Twitter API
+        self.hashtag = hashtag # hashtag is for Instagram & Flickr APIs
 
 
-    def instagram_downloader(hashtag='marseille'):
+    def instagram_downloader(self):
         '''
         This function downloads photos with Marseille hashtag from Instagram.com
         '''
@@ -24,8 +25,12 @@ class Downloader():
         
         # Create a new folder for fresh photos
         path = 'raw_data/Instagram'
-        folder = f'Instagram_{today}_{d_time}'
-        os.mkdir(f'{path}/{folder}')
+        folder = f'Instagram_{today}'
+        
+        try: # in case the folder already exists
+            os.mkdir(f'{path}/{folder}')
+        except:
+            pass
         
         # Get API keys from .env file
         load_dotenv()
@@ -33,6 +38,8 @@ class Downloader():
         api_host = os.getenv('x-rapidapi-host')
         
         # Forming a request to get unique user names for users having posts for the previous day
+        print('Instagram API is active')
+        
         url = "https://instagram47.p.rapidapi.com/hashtag_post"
         
         headers = {
@@ -43,29 +50,36 @@ class Downloader():
         url_list = set() # empty set to keep unique URLs leading to photos
         
         for i in range(10): # 10 requests per hour MAX (50 per day)!!!
-            
+            print('Proceeding request #', i)
             if i == 0:
                 cursor = '' # empty for the first request
             else:
                 cursor = r['body']['edge_hashtag_to_media']['page_info']['end_cursor'] # changing cursor to load next photos
 
             params = {
-                "hashtag" : hashtag,
+                "hashtag" : self.hashtag,
                 "endcursor" : cursor
             }
-            
-            r = requests.get(url, headers=headers, params=params).json()
-            
-            # Loop to append all URLs from the request
-            for item in r['body']['edge_hashtag_to_media']['edges']:
-                url_list.add(item['node']['thumbnail_src'])
+            try:
+                r = requests.get(url, headers=headers, params=params).json()
+                
+                # Loop to append all URLs from the request
+                for item in r['body']['edge_hashtag_to_media']['edges']:
+                    url_list.add(item['node']['thumbnail_src'])
+                    
+            except:
+                print(r)
+                continue
 
         # Download photos            
         for j, url in enumerate(url_list):
+            print('Downloading photo #', j)
             urllib.request.urlretrieve(url, f'{path}/{folder}/Instagram_{today}_{d_time}_{j}.jpg')
+            
+        print('Instagram API is over')
 
-
-    def flickr_downloader(hashtag='marseille'):
+    
+    def flickr_downloader(self):
         '''
         This function downloads photos with a defined hashtag
         from Flickr.com (1 user = 1 photo).
@@ -86,10 +100,12 @@ class Downloader():
         os.mkdir(f'{path}/{folder}')
             
         # Forming a request to get unique user names for users having posts for the previous day
+        print('Flickr API is active')
+        
         url = 'https://www.flickr.com/services/rest/'
         params = dict(method='flickr.photos.search',
                     api_key=api_key,
-                    text=hashtag,
+                    text=self.hashtag,
                     min_upload_date=yesterday,
                     max_upload_date=today,
                     format='json',
@@ -108,7 +124,7 @@ class Downloader():
 
         for user in users:
             # for list of arguments: https://www.flickr.com/services/api/flickr.photos.search.html
-            photos = flickr.walk(text=hashtag, # searching for Marseille photos
+            photos = flickr.walk(text=self.hashtag, # searching for Marseille photos
                                 user_id=user, #Photos from the set of users defined above
                                 extras='url_c', # Don't know what it does!
                                 per_page=500, # Number of photos to return per page. If this argument is omitted, it defaults to 100. The maximum allowed value is 500.
@@ -124,9 +140,11 @@ class Downloader():
                         continue
                     if i >= 0: # we are taking only 1 photo from each user
                         break
+                    
+        print('Flickr API is over')
 
 
-    def twitter_downloader(limit=1000):
+    def twitter_downloader(self):
         '''
         This function downloads photos with a defined hashtag
         from Twitter.com.
@@ -155,11 +173,12 @@ class Downloader():
         auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
         api = tw.API(auth, wait_on_rate_limit=True)
 
+        print('Twitter API is active')
 
         tweets = tw.Cursor(api.search,
                     q='#marseille',
                     lang="fr",
-                    since=yesterday).items(limit)
+                    since=yesterday).items(self.limit)
 
         # create the list of url (one picture/url)
         list_url =[]
@@ -173,7 +192,25 @@ class Downloader():
         # exporting the pictures
         for i, url in enumerate(list_url):
             urllib.request.urlretrieve(url, f'{path}/{folder}/Twitter_{today}_{i}.jpg')
-
+            
+        print('Twitter API is over')
+    
         
 if __name__ == '__main__':
-    Downloader()
+    '''
+    Since it is possible to run instagram_downloader up to 5 times per day,
+    we don't want bother about flickr_downloader and twitter_downloader.
+    They can raise an error if they were already used today => we ignore the errors
+    and pass to instagram_downloader.
+    '''
+    try:
+        Downloader(1000, 'marseille').flickr_downloader()
+    except:
+        pass
+    
+    try:
+        Downloader(1000, 'marseille').twitter_downloader()
+    except:
+        pass
+    
+    Downloader(1000, 'marseille').instagram_downloader()
