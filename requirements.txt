@@ -38,3 +38,7 @@ flickrapi
 requests
 tweepy
 python-dotenv
+
+# To GCP
+tensorflow-addons
+
