@@ -42,3 +42,6 @@ python-dotenv
 
 # To GCP
 tensorflow-addons
+
+# concatenation video
+moviepy
