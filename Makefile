@@ -111,7 +111,7 @@ BUCKET_TRAINING_FOLDER=trainings
 JOB_NAME=morph_training_$(shell date +'%Y%m%d_%H%M%S')
 
 # package name
-PACKAGE_NAME=imagemorph
+PACKAGE_NAME=digital_dream
 
 # Python job name, the python file to run for training
 FILENAME=morph
