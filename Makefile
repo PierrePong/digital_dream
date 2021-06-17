@@ -94,3 +94,49 @@ upload_data:
 	@gsutil -m cp -r /content/drive/My\ Drive/Clusters/cluster_2021-06-15_14-15_1* gs://m_digital_dream_bucket/Clusters/
 # store a file
 	@gsutil -m cp ${LOCAL_PATH}/* gs://${BUCKET_NAME}/${BUCKET_FOLDER}/${BUCKET_FILE_NAME}
+
+#################################################################
+# for morph
+
+install_local:
+	pip install -e .
+
+# bucket
+BUCKET_NAME=m_digital_dream_bucket
+
+# training folder, where package will be saved on bucket
+BUCKET_TRAINING_FOLDER=trainings
+
+# job name
+JOB_NAME=morph_training_$(shell date +'%Y%m%d_%H%M%S')
+
+# package name
+PACKAGE_NAME=imagemorph
+
+# Python job name, the python file to run for training
+FILENAME=morph
+
+#
+PYTHON_VERSION=3.7
+RUNTIME_VERSION=2.3
+
+# Might be changed for US
+REGION=europe-west1
+
+# TEST 1:  sur 3 images max sans upload GCP
+# TEST 2:  sur 3 images max avec upload GCP
+test_training:
+	python -m ${PACKAGE_NAME}.${FILENAME}
+
+
+
+# Après TEST, submit sur GCP avec upload
+gcp_submit_training:
+	gcloud ai-platform jobs submit training ${JOB_NAME} \
+		--job-dir gs://${BUCKET_NAME}/${BUCKET_TRAINING_FOLDER} \
+		--package-path ${PACKAGE_NAME} \
+		--module-name ${PACKAGE_NAME}.${FILENAME} \
+		--python-version=${PYTHON_VERSION} \
+		--runtime-version=${RUNTIME_VERSION} \
+		--region ${REGION} \
+		--stream-logs
