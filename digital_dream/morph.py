@@ -1,10 +1,11 @@
 import numpy as np
-import tensorflow as tf
-import tensorflow_addons as tfa
+import os
 import cv2
 from datetime import datetime as dt
-from imagemorph.utils import BUCKET_NAME, save_to_gcp, get_image_from_bucket
-import os
+import tensorflow as tf
+import tensorflow_addons as tfa
+from digital_dream.utils import save_to_gcp, get_image_from_bucket
+# from moviepy.editor import VideoFileClip, concatenate_videoclips
 
 TRAIN_EPOCHS = 1000
 
@@ -18,6 +19,7 @@ add_first = False
 
 timestamp = str(dt.date(dt.now()))
 
+data_path = os.path.dirname(__file__)
 
 @tf.function 
 def warp(origins, targets, preds_org, preds_trg):
@@ -107,13 +109,13 @@ def produce_warp_maps(origins, targets, img_):
             
             res_targets = tf.clip_by_value(res_targets, -1, 1)[0]
             res_img = ((res_targets.numpy() + 1) * 127.5).astype(np.uint8)
-            cv2.imwrite(f"data/train/a_to_b_%d.jpg" % epoch, cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR))
-            save_to_gcp(f"dreams/trains/train_{timestamp}/train{img_}/a_to_b_{epoch}.jpg", f"data/train/a_to_b_{epoch}.jpg", rm_local=False)
+            cv2.imwrite(f"{data_path}/data/train/a_to_b_%d.jpg" % epoch, cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR))
+            save_to_gcp(f"dreams/trains/train_{timestamp}/train{img_}/a_to_b_{epoch}.jpg", f"{data_path}/data/train/a_to_b_{epoch}.jpg", rm_local=False)
             
             res_origins = tf.clip_by_value(res_origins, -1, 1)[0]
             res_img = ((res_origins.numpy() + 1) * 127.5).astype(np.uint8)
-            cv2.imwrite(f"data/train/b_to_a_%d.jpg" % epoch, cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR))
-            save_to_gcp(f"dreams/trains/train_{timestamp}/train{img_}/b_to_a_{epoch}.jpg", f"data/train/b_to_a_{epoch}.jpg", rm_local=False)
+            cv2.imwrite(f"{data_path}/data/train/b_to_a_%d.jpg" % epoch, cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR))
+            save_to_gcp(f"dreams/trains/train_{timestamp}/train{img_}/b_to_a_{epoch}.jpg", f"{data_path}/data/train/b_to_a_{epoch}.jpg", rm_local=False)
 
             np.save('preds.npy', preds.numpy())
         
@@ -135,8 +137,8 @@ def use_warp_maps(origins, targets, img_):
     
     res_img = np.clip(res_img, -1, 1)
     res_img = ((res_img + 1) * 127.5).astype(np.uint8)
-    cv2.imwrite("data/morph/maps.jpg", cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR))
-    save_to_gcp(f"dreams/morphs/maps-{timestamp}/maps{img_}.jpg", "data/morph/maps.jpg", rm_local=False)
+    cv2.imwrite("{data_path}/data/morph/maps.jpg", cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR))
+    save_to_gcp(f"dreams/morphs/maps-{timestamp}/maps{img_}.jpg", "{data_path}/data/morph/maps.jpg", rm_local=False)
 
     
     #apply maps and save results
@@ -145,7 +147,7 @@ def use_warp_maps(origins, targets, img_):
     trg_strength = tf.reverse(org_strength, axis = [0])
  
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video = cv2.VideoWriter(f'data/morph/morph.mp4', fourcc, 48, (im_sz, im_sz))
+    video = cv2.VideoWriter(f'{data_path}/data/morph/morph.mp4', fourcc, 48, (im_sz, im_sz))
     img_a = np.zeros((im_sz, im_sz * (STEPS // 10), 3), dtype = np.uint8)
     img_b = np.zeros((im_sz, im_sz * (STEPS // 10), 3), dtype = np.uint8)
     img_a_b = np.zeros((im_sz, im_sz * (STEPS // 10), 3), dtype = np.uint8)
@@ -172,12 +174,12 @@ def use_warp_maps(origins, targets, img_):
             res_img[im_sz*2:im_sz*3, i // 10 * im_sz : (i // 10 + 1) * im_sz] = ((res_origins.numpy()[0] + 1) * 127.5).astype(np.uint8)
             print ('Image #%d produced.' % (i + 1))
             
-    cv2.imwrite("data/morph/result.jpg", cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR))
-    save_to_gcp(f"dreams/morphs/maps-{timestamp}/result{img_}", local_path="data/morph/result.jpg", rm_local=False)
+    cv2.imwrite("{data_path}/data/morph/result.jpg", cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR))
+    save_to_gcp(f"dreams/morphs/maps-{timestamp}/result{img_}", local_path="{data_path}/data/morph/result.jpg", rm_local=False)
     
     cv2.destroyAllWindows()
     video.release()   
-    save_to_gcp(f"dreams/morphs/videos-{timestamp}/video{img_}.mp4", "data/morph/morph.mp4", rm_local=False)
+    save_to_gcp(f"dreams/morphs/videos-{timestamp}/video{img_}.mp4", "{data_path}/data/morph/morph.mp4", rm_local=False)
 
     print ('Result video saved.')
     
@@ -187,7 +189,7 @@ if __name__ == "__main__":
     path = "Clusters/cluster_2021-06-15_16-16_0"
     local_path = "images"
 
-    for img_ in range(4,19):
+    for img_ in range(19):
         source_path = "{}/{}.jpg".format(path, img_)
         target_path = "{}/{}.jpg".format(path, img_+1)
         # source_path = df.loc[i, 0]
@@ -218,16 +220,17 @@ if __name__ == "__main__":
         produce_warp_maps(origins, targets, img_=img_)
         use_warp_maps(origins, targets, img_=img_)
         
-        from moviepy.editor import VideoFileClip, concatenate_videoclips
-        path = "raw_data"
-        final_clip = VideoFileClip(f"{path}/video0.mp4")
-        for i in range(1,4):
-            clip = VideoFileClip(f"{path}/video{i}.mp4") #
-            final_clip = concatenate_videoclips([final_clip,clip])
-        final_clip.write_videofile(f"{path}/Dreams.mp4")
+        # Concatenating videos
+         
+        # path = "raw_data"
+        # final_clip = VideoFileClip(f"{path}/video0.mp4")
+        # for i in range(1,4):
+        #     clip = VideoFileClip(f"{path}/video{i}.mp4") #
+        #     final_clip = concatenate_videoclips([final_clip,clip])
+        # final_clip.write_videofile(f"{path}/Dreams.mp4")
         
         
         
-        for folder in ['data/morph', 'data/train']:
+        for folder in [f'{data_path}/data/morph', f'{data_path}/data/train']:
             for file in os.listdir(folder):
                 os.remove(os.path.join(folder, file))

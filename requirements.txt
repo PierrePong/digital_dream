@@ -10,9 +10,7 @@ pandas
 scikit-learn
 tensorflow
 tensorboard
-shutil
 opencv-python
-tempfile
 
 # tests/linter
 black
