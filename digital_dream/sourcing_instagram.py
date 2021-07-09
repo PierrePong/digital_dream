@@ -68,7 +68,7 @@ def instagram_downloader(hashtag='marseille'):
             
             # Loop to download all images from the request
             for j, item in enumerate(r['body']['edge_hashtag_to_media']['edges']):
-                if item['node']['owner']['id'] not in black_list:
+                if (item['node']['owner']['id'] not in black_list) and (item['node']['is_video']) == False:
                     image_url = item['node']['thumbnail_src']
                     user_id = item['node']['owner']['id']
                     print(f'Downloading photo #{j}')
