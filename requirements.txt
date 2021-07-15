@@ -35,9 +35,7 @@ fsspec
 gcsfs
 
 # Sourcing
-flickrapi
 requests
-tweepy
 python-dotenv
 
 # To GCP
